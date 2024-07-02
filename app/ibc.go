@@ -31,6 +31,9 @@ import (
 	govtypes "github.com/cosmos/cosmos-sdk/x/gov/types"
 	govv1beta1 "github.com/cosmos/cosmos-sdk/x/gov/types/v1beta1"
 	paramstypes "github.com/cosmos/cosmos-sdk/x/params/types"
+
+	pepmodule "github.com/Fairblock/fairyring/x/pep/module"
+	pepmoduletypes "github.com/Fairblock/fairyring/x/pep/types"
 )
 
 // registerIBCModules register IBC keepers and non dependency inject modules.
@@ -110,6 +113,12 @@ func (app *LazyApp) registerIBCModules(appOpts servertypes.AppOptions) error {
 	ibcRouter := porttypes.NewRouter().
 		AddRoute(ibctransfertypes.ModuleName, transferIBCModule)
 
+	pepStack, err := app.registerPepModule()
+	if err != nil {
+		return err
+	}
+	ibcRouter.AddRoute(pepmoduletypes.ModuleName, pepStack)
+
 	wasmStack, err := app.registerWasmModules(appOpts)
 	if err != nil {
 		return err
@@ -150,6 +159,7 @@ func RegisterIBC(registry cdctypes.InterfaceRegistry) map[string]appmodule.AppMo
 		ibctm.ModuleName:            ibctm.AppModule{},
 		solomachine.ModuleName:      solomachine.AppModule{},
 		wasmtypes.ModuleName:        wasm.AppModule{},
+		pepmoduletypes.ModuleName:   pepmodule.AppModule{},
 	}
 
 	for name, m := range modules {

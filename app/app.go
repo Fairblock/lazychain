@@ -12,6 +12,8 @@ import (
 	ibctransferkeeper "github.com/cosmos/ibc-go/v8/modules/apps/transfer/keeper"
 	ibckeeper "github.com/cosmos/ibc-go/v8/modules/core/keeper"
 
+	pepmodulekeeper "github.com/Fairblock/fairyring/x/pep/keeper"
+
 	_ "cosmossdk.io/api/cosmos/tx/config/v1"                            // import for side-effects
 	_ "cosmossdk.io/x/circuit"                                          // import for side-effects
 	_ "cosmossdk.io/x/evidence"                                         // import for side-effects
@@ -125,6 +127,10 @@ type LazyApp struct {
 	// CosmWasm
 	WasmKeeper       wasmkeeper.Keeper
 	ScopedWasmKeeper capabilitykeeper.ScopedKeeper
+
+	// Fairblock's PEP module
+	PepKeeper       pepmodulekeeper.Keeper
+	ScopedPepKeeper capabilitykeeper.ScopedKeeper
 
 	// this line is used by starport scaffolding # stargate/app/keeperDeclaration
 

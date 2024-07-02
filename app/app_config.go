@@ -7,6 +7,8 @@ import (
 	ibctransfertypes "github.com/cosmos/ibc-go/v8/modules/apps/transfer/types"
 	ibcexported "github.com/cosmos/ibc-go/v8/modules/core/exported"
 
+	pepmoduletypes "github.com/Fairblock/fairyring/x/pep/types"
+
 	runtimev1alpha1 "cosmossdk.io/api/cosmos/app/runtime/v1alpha1"
 	appv1alpha1 "cosmossdk.io/api/cosmos/app/v1alpha1"
 	authmodulev1 "cosmossdk.io/api/cosmos/auth/module/v1"
@@ -78,6 +80,7 @@ var (
 		consensustypes.ModuleName,
 		circuittypes.ModuleName,
 		// chain modules
+		pepmoduletypes.ModuleName,
 		wasmtypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/initGenesis
 	}
@@ -102,6 +105,7 @@ var (
 		ibctransfertypes.ModuleName,
 		ibcfeetypes.ModuleName,
 		// chain modules
+		pepmoduletypes.ModuleName,
 		wasmtypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/beginBlockers
 	}
@@ -118,6 +122,7 @@ var (
 		capabilitytypes.ModuleName,
 		ibcfeetypes.ModuleName,
 		// chain modules
+		pepmoduletypes.ModuleName,
 		wasmtypes.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/endBlockers
 	}
@@ -136,6 +141,7 @@ var (
 		{Account: stakingtypes.NotBondedPoolName, Permissions: []string{authtypes.Burner, stakingtypes.ModuleName}},
 		{Account: ibctransfertypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner}},
 		{Account: ibcfeetypes.ModuleName},
+		{Account: pepmoduletypes.ModuleName, Permissions: []string{authtypes.Minter, authtypes.Burner, authtypes.Staking}},
 		{Account: wasmtypes.ModuleName, Permissions: []string{authtypes.Burner}},
 		// this line is used by starport scaffolding # stargate/app/maccPerms
 	}
