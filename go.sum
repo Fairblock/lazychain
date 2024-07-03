@@ -291,6 +291,8 @@ github.com/FairBlock/DistributedIBE v0.0.0-20231211202607-d457df6869db h1:wmRvJR
 github.com/FairBlock/DistributedIBE v0.0.0-20231211202607-d457df6869db/go.mod h1:qXpLBzZiSdWoweJkE/lAIPedf6GOl7WsYM8rxrZCCDk=
 github.com/Fairblock/fairyring v0.5.1-0.20240626140318-ee22551b8575 h1:Mdud+7ebwCG9amaDmpAI3RJL0WTKoqkBMsATsu5s3d4=
 github.com/Fairblock/fairyring v0.5.1-0.20240626140318-ee22551b8575/go.mod h1:3g5PlTaQg6jkDdQUT4hPsoyuMozYwi1+/VmRqXMgurg=
+github.com/Fairblock/fairyring v0.5.1-0.20240703002155-48da58ab638c h1:1awH4EOig3lYOd1oqcw1wlVlTvlKhpXzb5WvL2/TRB4=
+github.com/Fairblock/fairyring v0.5.1-0.20240703002155-48da58ab638c/go.mod h1:3g5PlTaQg6jkDdQUT4hPsoyuMozYwi1+/VmRqXMgurg=
 github.com/GaijinEntertainment/go-exhaustruct/v2 v2.2.0/go.mod h1:n/vLeA7V+QY84iYAGwMkkUUp9ooeuftMEvaDrSVch+Q=
 github.com/GaijinEntertainment/go-exhaustruct/v2 v2.3.0 h1:+r1rSv4gvYn0wmRjC8X7IAzX8QezqtFV9m0MUHFJgts=
 github.com/GaijinEntertainment/go-exhaustruct/v2 v2.3.0/go.mod h1:b3g59n2Y+T5xmcxJL+UEG2f8cQploZm1mR/v6BW0mU0=

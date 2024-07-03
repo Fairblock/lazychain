@@ -27,7 +27,7 @@ require (
 	cosmossdk.io/x/feegrant v0.1.1
 	cosmossdk.io/x/upgrade v0.1.2
 	github.com/CosmWasm/wasmd v0.51.0
-	github.com/Fairblock/fairyring v0.5.1-0.20240626140318-ee22551b8575
+	github.com/Fairblock/fairyring v0.5.1-0.20240703002155-48da58ab638c
 	github.com/bufbuild/buf v1.30.0
 	github.com/cometbft/cometbft v0.38.7
 	github.com/cosmos/cosmos-db v1.0.2
