@@ -1,24 +1,31 @@
 package app
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 
+	"github.com/CosmWasm/wasmd/x/wasm"
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
+	fairyabci "github.com/Fairblock/fairyring/abci"
+	"github.com/Fairblock/fairyring/abci/checktx"
 	dbm "github.com/cosmos/cosmos-db"
 	capabilitykeeper "github.com/cosmos/ibc-go/modules/capability/keeper"
 	ibcfeekeeper "github.com/cosmos/ibc-go/v8/modules/apps/29-fee/keeper"
 	ibctransferkeeper "github.com/cosmos/ibc-go/v8/modules/apps/transfer/keeper"
 	ibckeeper "github.com/cosmos/ibc-go/v8/modules/core/keeper"
+	"github.com/skip-mev/block-sdk/v2/block"
+	"github.com/skip-mev/block-sdk/v2/block/base"
 
 	pepmodulekeeper "github.com/Fairblock/fairyring/x/pep/keeper"
 
-	_ "cosmossdk.io/api/cosmos/tx/config/v1"                            // import for side-effects
-	_ "cosmossdk.io/x/circuit"                                          // import for side-effects
-	_ "cosmossdk.io/x/evidence"                                         // import for side-effects
-	_ "cosmossdk.io/x/feegrant/module"                                  // import for side-effects
-	_ "cosmossdk.io/x/upgrade"                                          // import for side-effects
+	_ "cosmossdk.io/api/cosmos/tx/config/v1" // import for side-effects
+	_ "cosmossdk.io/x/circuit"               // import for side-effects
+	_ "cosmossdk.io/x/evidence"              // import for side-effects
+	_ "cosmossdk.io/x/feegrant/module"       // import for side-effects
+	_ "cosmossdk.io/x/upgrade"               // import for side-effects
+	"github.com/cosmos/cosmos-sdk/x/auth/ante"
 	_ "github.com/cosmos/cosmos-sdk/x/auth/tx/config"                   // import for side-effects
 	_ "github.com/cosmos/cosmos-sdk/x/auth/vesting"                     // import for side-effects
 	_ "github.com/cosmos/cosmos-sdk/x/authz/module"                     // import for side-effects
@@ -136,6 +143,9 @@ type LazyApp struct {
 
 	// simulation manager
 	sm *module.SimulationManager
+
+	// Custom checkTx handler
+	checkTxHandler checktx.CheckTx
 }
 
 func init() {
@@ -292,6 +302,96 @@ func New(
 
 	app.App = appBuilder.Build(db, traceStore, baseAppOptions...)
 
+	// ---------------------------------------------------------------------------- //
+	// ------------------------- Begin Custom Code -------------------------------- //
+	// ---------------------------------------------------------------------------- //
+	// STEP 1-3: Create the Block SDK lanes.
+	keyshareLane, defaultLane := CreateLanes(app)
+
+	// STEP 4: Construct a mempool based off the lanes. Note that the order of the lanes
+	// matters. Blocks are constructed from the top lane to the bottom lane. The top lane
+	// is the first lane in the array and the bottom lane is the last lane in the array.
+	mempool, err := block.NewLanedMempool(
+		app.Logger(),
+		[]block.Lane{keyshareLane, defaultLane},
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	// The application's mempool is now powered by the Block SDK!
+	app.App.SetMempool(mempool)
+
+	wasmConfig, err := wasm.ReadWasmConfig(appOpts)
+	if err != nil {
+		panic(fmt.Sprintf("error while reading wasm config: %s", err))
+	}
+
+	// STEP 5: Create a global ante handler that will be called on each transaction when
+	// proposals are being built and verified. Note that this step must be done before
+	// setting the ante handler on the lanes.
+	handlerOptions := ante.HandlerOptions{
+		AccountKeeper:   app.AccountKeeper,
+		BankKeeper:      app.BankKeeper,
+		FeegrantKeeper:  app.FeeGrantKeeper,
+		SigGasConsumer:  ante.DefaultSigVerificationGasConsumer,
+		SignModeHandler: app.txConfig.SignModeHandler(),
+	}
+	options := LazyHandlerOptions{
+		BaseOptions:  handlerOptions,
+		wasmConfig:   wasmConfig,
+		TxDecoder:    app.txConfig.TxDecoder(),
+		TxEncoder:    app.txConfig.TxEncoder(),
+		KeyShareLane: keyshareLane,
+		PepKeeper:    app.PepKeeper,
+	}
+
+	anteHandler := NewLazyAnteHandler(options)
+	app.App.SetAnteHandler(anteHandler)
+
+	// Set the ante handler on the lanes.
+	opt := []base.LaneOption{
+		base.WithAnteHandler(anteHandler),
+	}
+	keyshareLane.WithOptions(
+		opt...,
+	)
+
+	// defaultLane.WithOptions(
+	// 	opt...,
+	// )
+
+	// Step 6: Create the proposal handler and set it on the app. Now the application
+	// will build and verify proposals using the Block SDK!
+	proposalHandler := fairyabci.NewProposalHandler(
+		app.Logger(),
+		app.txConfig.TxDecoder(),
+		app.txConfig.TxEncoder(),
+		mempool,
+	)
+	app.App.SetPrepareProposal(proposalHandler.PrepareProposalHandler())
+	app.App.SetProcessProposal(proposalHandler.ProcessProposalHandler())
+
+	// Step 7: Set the custom CheckTx handler on BaseApp. This is only required if you
+	// use the keyshare lane.
+	keyshareCheckTx := checktx.NewKeyshareCheckTxHandler(
+		app.App,
+		app.txConfig.TxDecoder(),
+		keyshareLane,
+		anteHandler,
+		app.App.CheckTx,
+	)
+	checkTxHandler := checktx.NewMempoolParityCheckTx(
+		app.Logger(), mempool,
+		app.txConfig.TxDecoder(), keyshareCheckTx.CheckTx(),
+	)
+
+	app.SetCheckTx(checkTxHandler.CheckTx())
+
+	// ---------------------------------------------------------------------------- //
+	// ------------------------- End Custom Code ---------------------------------- //
+	// ---------------------------------------------------------------------------- //
+
 	// Register legacy modules
 	if err := app.registerIBCModules(appOpts); err != nil {
 		return nil, err
@@ -423,6 +523,11 @@ func GetMaccPerms() map[string][]string {
 		dup[perms.Account] = perms.Permissions
 	}
 	return dup
+}
+
+// SetCheckTx sets the checkTxHandler for the app.
+func (app *LazyApp) SetCheckTx(handler checktx.CheckTx) {
+	app.checkTxHandler = handler
 }
 
 // BlockedAddresses returns all the app's blocked account addresses.
